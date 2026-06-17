@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>KingChords — sampler composer</title>
+<style>
+  :root{
+    --bg:#a9a79e; --device:#cfcdc5; --panel:#dad8d0; --panel-d:#c3c1b8;
+    --ink:#2a2924; --muted:#6e6c65; --line:#aeaca3;
+    --orange:#f15a22; --orange-d:#cf4715; --cream:#edeae2; --black:#26251f;
+    --display:#131210; --red:#e23b2e; --cyan:#1fa9c9; --blue:#2f64d8; --pink:#ff5f8d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(130% 90% at 50% 0%, #c6c4bb 0%, #9d9b92 75%), var(--bg);
+    color:var(--ink);
+    font-family:"Helvetica Neue",ui-sans-serif,system-ui,Arial,sans-serif;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+    display:flex;flex-direction:column;align-items:center;padding:20px 14px 44px;
+  }
+
+  /* ---- Enhet ---- */
+  .device{
+    width:100%;max-width:560px;
+    background:linear-gradient(180deg,#d6d4cc,#c6c4bb);
+    border:1px solid #b1afa6;border-radius:24px;padding:16px;
+    box-shadow:0 1px 0 #fff inset, 0 22px 55px rgba(0,0,0,.4);position:relative;
+  }
+  .device-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:4px 4px 12px}
+  .logo{font-weight:800;font-size:26px;letter-spacing:.5px;line-height:1}
+  .logo .ii{color:var(--orange)}
+  .sub{font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-top:6px;font-weight:700}
+  .grille{
+    width:120px;height:46px;border-radius:9px;flex:0 0 auto;
+    background-image:radial-gradient(circle, #8d8b82 1.5px, transparent 1.7px);
+    background-size:9px 9px;background-color:#bdbbb2;
+    border:1px solid #a7a59c;box-shadow:inset 0 1px 3px rgba(0,0,0,.2);
+  }
+
+  /* ---- LED-display ---- */
+  .display{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:linear-gradient(180deg,#1c1b16,#0d0c0a);
+    border:1px solid #000;border-radius:12px;padding:11px 15px;margin-bottom:14px;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,.75);
+  }
+  .disp-label{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:9px;letter-spacing:2px;color:#716c5c;font-weight:700}
+  .disp-led{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700;
+    font-size:20px;letter-spacing:2px;color:var(--orange);text-shadow:0 0 9px rgba(241,90,34,.65);
+  }
+  .disp-led.alt{color:var(--cyan);text-shadow:0 0 9px rgba(31,169,201,.6);font-size:15px}
+  .disp-icons{margin-left:auto;display:flex;gap:5px}
+  .disp-icons i{width:11px;height:11px;border-radius:2px;display:block;opacity:.92}
+
+  /* ---- Paneler ---- */
+  .wrap{display:flex;flex-direction:column;gap:13px}
+  .panel{
+    background:var(--panel);border:1px solid #c2c0b7;border-radius:14px;padding:15px;
+    box-shadow:0 1px 0 #fff inset, 0 2px 5px rgba(0,0,0,.1);position:relative;
+  }
+  .panel h2{font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);margin:0 0 11px;font-weight:700}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+
+  /* ---- Segment-knappar ---- */
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{
+    border:1px solid var(--line);background:linear-gradient(180deg,#f3f1ea,#dcdacf);
+    color:var(--ink);padding:8px 12px;border-radius:8px;cursor:pointer;
+    font:700 11px/1 "Helvetica Neue",system-ui;letter-spacing:.7px;text-transform:uppercase;
+    box-shadow:0 1px 0 #fff inset,0 1px 2px rgba(0,0,0,.13);
+  }
+  .seg button:active{transform:translateY(1px)}
+  .seg button.on{
+    background:linear-gradient(180deg,#ff7c46,var(--orange));color:#fff;border-color:var(--orange-d);
+    box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 1px 5px rgba(241,90,34,.45);
+  }
+  .seg-inst button{padding:11px 14px;font-size:12px;flex:1 1 auto;min-width:74px}
+
+  /* ---- Pads ---- */
+  .chords{display:flex;flex-direction:column;gap:9px}
+  .chord-row{display:flex;gap:9px}
+  .chord{
+    flex:1 1 0;min-width:0;position:relative;cursor:pointer;touch-action:none;
+    background:linear-gradient(180deg,#36352d,#222019);
+    border:1px solid #131209;border-radius:10px;color:var(--cream);
+    padding:14px 6px 12px;min-height:90px;
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.09), 0 2px 0 #19180f, 0 4px 9px rgba(0,0,0,.28);
+    transition:transform .04s, box-shadow .1s, background .1s;
+  }
+  .chord:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 1px 0 #19180f}
+  .chord .roman{font-size:clamp(9px,2.9vw,12px);color:#9b988d;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .chord .name{font-size:clamp(15px,4.7vw,21px);font-weight:800;letter-spacing:.3px}
+  .chord .key{font-size:clamp(9px,2.6vw,11px);color:#85827a;font-weight:600}
+  .chord.active{
+    background:linear-gradient(180deg,#ff7e49,var(--orange));border-color:var(--orange-d);color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 0 var(--orange-d),0 4px 14px rgba(241,90,34,.55);
+  }
+  .chord.active .roman,.chord.active .key{color:#ffe9df}
+
+  /* ---- Touch-pads ---- */
+  .pads{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .pad-unit{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .pad-title{font-size:10px;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:700}
+  .pad{
+    position:relative;width:min(60vw,188px);height:min(60vw,188px);border-radius:50%;
+    border:6px solid #c2c0b7;background:#262520;cursor:pointer;touch-action:none;flex:0 0 auto;
+    box-shadow:0 2px 7px rgba(0,0,0,.3), inset 0 0 0 1px #000, inset 0 0 26px rgba(0,0,0,.6);
+  }
+  .pad-center{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:38%;height:38%;border-radius:50%;z-index:2;
+    background:radial-gradient(circle at 50% 34%, #f5f3ec, #d4d2c9);
+    border:1px solid #b4b2a9;color:var(--ink);
+    display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;font-weight:800;
+    box-shadow:0 2px 5px rgba(0,0,0,.32), inset 0 1px 0 #fff;transition:.1s;
+  }
+  .pad-center.on{background:radial-gradient(circle at 50% 34%, #ff8a55, var(--orange));color:#fff;border-color:var(--orange-d)}
+  .pad-labels{position:absolute;inset:0;z-index:2;pointer-events:none}
+  .pad-label{
+    position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
+    font-size:13px;font-weight:800;color:#54524a;transition:.1s;
+  }
+  .pad-label.on{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+  .pad-puck{
+    position:absolute;left:50%;top:50%;width:18px;height:18px;border-radius:50%;z-index:3;
+    background:var(--orange);transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+    box-shadow:0 0 12px rgba(241,90,34,.95),0 0 0 2px #fff;transition:opacity .12s;
+  }
+  .pad-puck.on{opacity:1}
+  .pad-hint{margin-top:13px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center}
+
+  /* ---- Scratch (vinyl) ---- */
+  .scratch-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .vinyl{
+    position:relative;width:min(56vw,168px);height:min(56vw,168px);border-radius:50%;flex:0 0 auto;
+    cursor:grab;touch-action:none;border:4px solid #c2c0b7;
+    background:repeating-radial-gradient(circle at 50% 50%, #161616 0 2px, #232323 2px 4px), radial-gradient(circle at 50% 40%, #2c2c2c, #0c0c0c 72%);
+    box-shadow:0 4px 14px rgba(0,0,0,.45), inset 0 0 0 1px #000;
+  }
+  .vinyl:active{cursor:grabbing}
+  .vinyl-label{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:46%;height:46%;border-radius:50%;pointer-events:none;z-index:2;
+    background:radial-gradient(circle at 50% 34%, #ff7c46, var(--orange));color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;letter-spacing:1px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 0 0 4px #0c0c0c;
+  }
+  .vinyl-label::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:#0c0c0c;transform:translate(-50%,-50%)}
+  .vinyl-mark{position:absolute;left:50%;top:7%;width:4px;height:16%;background:#9a9890;border-radius:2px;transform:translateX(-50%);pointer-events:none;z-index:1}
+  .scratch-side{flex:1 1 200px;min-width:180px;display:flex;flex-direction:column;gap:12px}
+
+  /* ---- Reglage ---- */
+  .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}
+  .ctrl{display:flex;flex-direction:column;gap:8px}
+  .ctrl label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700}
+  select{
+    width:100%;appearance:none;border:1px solid var(--line);border-radius:8px;padding:9px 12px;
+    background:linear-gradient(180deg,#f3f1ea,#e1dfd6);color:var(--ink);font-weight:700;font-size:14px;
+  }
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:5px;background:#b4b2a9;box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:22px;height:22px;border-radius:50%;margin-top:-7px;
+    background:radial-gradient(circle at 50% 34%,#f5f3ec,#cdcbc2);border:1px solid #a6a49b;box-shadow:0 1px 3px rgba(0,0,0,.35);
+  }
+  input[type=range]::-moz-range-track{height:8px;border-radius:5px;background:#b4b2a9}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#eee;border:1px solid #a6a49b}
+
+  .drum-mode .forma,.drum-mode .keyctl{opacity:.32;pointer-events:none;filter:grayscale(.5)}
+  .drum-mode #layout{display:none}
+
+  footer{max-width:560px;width:100%;color:#5e5c55;font-size:11px;line-height:1.7;margin-top:14px}
+  kbd{background:linear-gradient(180deg,#f3f1ea,#dcdacf);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:11px;color:var(--ink);font-weight:700}
+
+  @media (max-width:640px){
+    .controls{grid-template-columns:1fr}
+    body{padding:12px 9px 36px}
+    .chord{min-height:84px;padding:11px 4px 10px}
+    .logo{font-size:22px}
+    .grille{width:96px;height:38px}
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="device-top">
+      <div>
+        <div class="logo">KingChords <span class="ii">II</span></div>
+        <div class="sub">コード · CHORD COMPOSER</div>
+      </div>
+      <div class="grille" aria-hidden="true"></div>
+    </div>
+
+    <div class="display">
+      <span class="disp-label">KEY</span>
+      <span class="disp-led" id="keyReadout">C-DUR</span>
+      <span class="disp-label" style="margin-left:8px">INST</span>
+      <span class="disp-led alt" id="instReadout">ORGEL</span>
+      <span class="disp-icons" aria-hidden="true">
+        <i style="background:var(--orange)"></i><i style="background:var(--cyan)"></i>
+        <i style="background:var(--red)"></i><i style="background:var(--blue)"></i>
+      </span>
+    </div>
+
+    <div class="wrap">
+
+      <!-- INSTRUMENT -->
+      <div class="panel">
+        <h2>Instrument</h2>
+        <div class="seg seg-inst" id="inst">
+          <button data-inst="bass">Bas</button>
+          <button data-inst="drums">Trummor</button>
+          <button data-inst="piano">Piano</button>
+          <button data-inst="organ" class="on">Orgel</button>
+          <button data-inst="guitar">Gitarr</button>
+        </div>
+      </div>
+
+      <!-- 7 PADS -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2 style="margin:0">Ackord <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— tangenter 1–7</span></h2>
+          <div class="seg" id="layout">
+            <button data-layout="fifths" class="on">Kvintcirkel</button>
+            <button data-layout="function">Funktion</button>
+            <button data-layout="scale">Skala</button>
+          </div>
+        </div>
+        <div class="chords" id="chords"></div>
+      </div>
+
+      <!-- FORMA ACKORDET -->
+      <div class="panel forma">
+        <h2>Forma ackordet <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— dra runt medan du spelar</span></h2>
+        <div class="pads">
+          <div class="pad-unit">
+            <div class="pad-title">Tonalitet</div>
+            <div class="pad" id="tonPad">
+              <div class="pad-center" id="tonCenter">Triad</div>
+              <div class="pad-labels" id="tonLabels"></div>
+              <div class="pad-puck" id="tonPuck"></div>
+            </div>
+          </div>
+          <div class="pad-unit">
+            <div class="pad-title">Bas / röstföring</div>
+            <div class="pad" id="bassPad">
+              <div class="pad-center" id="bassCenter">Rot</div>
+              <div class="pad-labels" id="bassLabels"></div>
+              <div class="pad-puck" id="bassPuck"></div>
+            </div>
+          </div>
+        </div>
+        <div class="pad-hint">
+          Håll ett ackord och dra på paden. <strong style="color:var(--ink)">Tonalitet:</strong> mitten = ren treklang.
+          <strong style="color:var(--ink)">Bas:</strong> mitten = grundton; <em>Auto</em> väljer röstläggning med minsta tonrörelse.
+        </div>
+      </div>
+
+      <!-- SCRATCH -->
+      <div class="panel">
+        <h2>Scratch <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— dra på skivan</span></h2>
+        <div class="scratch-row">
+          <div class="vinyl" id="vinyl">
+            <div class="vinyl-mark"></div>
+            <div class="vinyl-label" id="vinylLabel">AHH</div>
+          </div>
+          <div class="scratch-side">
+            <div class="ctrl">
+              <label>Ljud att scratcha</label>
+              <div class="seg" id="scratchSel">
+                <button data-s="ahh" class="on">Ahh</button>
+                <button data-s="hit">Hit</button>
+                <button data-s="zap">Zap</button>
+              </div>
+            </div>
+            <div class="ctrl">
+              <label>Scratch-volym</label>
+              <input type="range" id="scratchVol" min="0" max="100" step="1" value="80" />
+            </div>
+            <div class="pad-hint" style="text-align:left;margin:2px 0 0">Dra fingret runt skivan fram och tillbaka. Snabbt = högre pitch, baklänges = omvänt ljud.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TONART & LJUD -->
+      <div class="panel">
+        <h2>Tonart &amp; ljud</h2>
+        <div class="controls">
+          <div class="ctrl keyctl">
+            <label>Grundton</label>
+            <select id="root"></select>
+          </div>
+          <div class="ctrl keyctl">
+            <label>Skala</label>
+            <div class="seg" id="mode">
+              <button data-mode="major" class="on">Dur</button>
+              <button data-mode="minor">Moll</button>
+            </div>
+          </div>
+          <div class="ctrl">
+            <label>Oktav: <span id="octVal">5</span></label>
+            <input type="range" id="oct" min="3" max="6" step="1" value="5" />
+          </div>
+          <div class="ctrl">
+            <label>Filter (klang): <span id="cutVal">12000</span> Hz</label>
+            <input type="range" id="cut" min="800" max="12000" step="50" value="12000" />
+          </div>
+          <div class="ctrl">
+            <label>Volym</label>
+            <input type="range" id="vol" min="0" max="100" step="1" value="80" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <strong>Spela:</strong> tryck på paderna eller tangenterna <kbd>1</kbd>–<kbd>7</kbd>.
+    Tonalitet: <kbd>Q</kbd>–<kbd>U</kbd>. Bas: <kbd>A</kbd>/<kbd>S</kbd>/<kbd>D</kbd>/<kbd>F</kbd>. Oktav: <kbd>Z</kbd>/<kbd>X</kbd>.
+    <br><strong>Instrument:</strong> bas, trummor, piano, orgel, gitarr — riktiga samplade ljud (smplr / General MIDI + TR-808).
+    <br>Ljudsamplingarna hämtas från ett ljudbibliotek på nätet första gången ett instrument används (kräver internet).
+  </footer>
+
+<script type="module">
+import { Soundfont, DrumMachine } from "https://esm.sh/smplr";
+
+  // ---------- Musik-teori ----------
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const SCALES = { major: [0,2,4,5,7,9,11], minor: [0,2,3,5,7,8,10] };
+  const ROMAN = ['I','II','III','IV','V','VI','VII'];
+
+  const MODS = [
+    { id:'triad', label:'Triad', apply:(t,f)=>({iv:[0,t,f]}) },
+    { id:'sus2',  label:'sus2',  apply:(t,f)=>({iv:[0,2,f], sus:'sus2'}) },
+    { id:'sus4',  label:'sus4',  apply:(t,f)=>({iv:[0,5,f], sus:'sus4'}) },
+    { id:'add9',  label:'add9',  apply:(t,f)=>({iv:[0,t,f,14], ext:'add9'}) },
+    { id:'6',     label:'6',     apply:(t,f)=>({iv:[0,t,f,9],  ext:'6'}) },
+    { id:'7',     label:'7',     apply:(t,f)=>({iv:[0,t,f,10], ext:'7'}) },
+    { id:'maj7',  label:'maj7',  apply:(t,f)=>({iv:[0,t,f,11], ext:'maj7'}) },
+  ];
+
+  // ---------- Instrument (samplade via smplr) ----------
+  // sf = General MIDI-namn; transpose = halvtoner vid uppspelning; mono = spela bara grundtonen
+  const INSTRUMENTS = {
+    bass:   { label:'Bas',     short:'BAS',    sf:'electric_bass_finger',  mono:true, transpose:-24 },
+    drums:  { label:'Trummor', short:'TRUM',   drums:true },
+    piano:  { label:'Piano',   short:'PIANO',  sf:'acoustic_grand_piano',  transpose:0 },
+    organ:  { label:'Orgel',   short:'ORGEL',  sf:'drawbar_organ',         transpose:0 },
+    guitar: { label:'Gitarr',  short:'GITARR', sf:'acoustic_guitar_steel', transpose:-12 },
+  };
+
+  // TR-808-samplingar (exakta namn verifierade mot kittet)
+  const DRUM_PADS = [
+    { name:'KICK',     sample:'kick/bd0050' },
+    { name:'SNARE',    sample:'snare/sd0050' },
+    { name:'HI-HAT',   sample:'hihat-close/ch' },
+    { name:'OPEN HAT', sample:'hihat-open/oh50' },
+    { name:'CLAP',     sample:'clap/cp' },
+    { name:'TOM',      sample:'mid-tom/mt50' },
+    { name:'CYMBAL',   sample:'cymbal/cy0050' },
+  ];
+
+  // ---------- Tillstånd ----------
+  const state = {
+    rootIndex: 0, mode: 'major', mod: 'triad',
+    octave: 5, cutoff: 12000, volume: 0.80,
+    layout: 'fifths', bass: 'root', instrument: 'organ',
+    scratchKind: 'ahh',
+  };
+
+  const LAYOUTS = {
+    fifths:   [[3,0,4,1],[5,2,6]],
+    function: [[0,3,4],[1,2,5,6]],
+    scale:    [[0,1,2,3],[4,5,6]],
+  };
+  const DRUM_LAYOUT = [[0,1,2,3],[4,5,6]];
+
+  // ---------- Ackordbygge ----------
+  function buildChord(degree){
+    const scale = SCALES[state.mode];
+    const tone = i => scale[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
+    const rootSemi  = tone(degree);
+    const third = tone(degree + 2) - rootSemi;
+    const fifth = tone(degree + 4) - rootSemi;
+
+    const m = MODS.find(x => x.id === state.mod).apply(third, fifth);
+    const intervals = m.iv;
+
+    const rootName = NOTE_NAMES[(state.rootIndex + rootSemi) % 12];
+    let quality = '';
+    if (third === 3 && fifth === 7) quality = 'm';
+    else if (third === 3 && fifth === 6) quality = 'dim';
+    else if (third === 4 && fifth === 8) quality = 'aug';
+
+    let nameBase;
+    if (m.sus) nameBase = rootName + m.sus;
+    else if (m.ext === '7') nameBase = rootName + (quality === '' ? '7' : quality === 'm' ? 'm7' : quality === 'dim' ? 'dim7' : 'aug7');
+    else if (m.ext === 'maj7') nameBase = rootName + (quality === 'm' ? 'm(maj7)' : quality + 'maj7');
+    else if (m.ext) nameBase = rootName + quality + m.ext;
+    else nameBase = rootName + quality;
+
+    let roman = ROMAN[degree];
+    if (quality === 'm' || quality === 'dim') roman = roman.toLowerCase();
+    if (quality === 'dim') roman += '°';
+    if (quality === 'aug') roman += '+';
+
+    const rootMidi = state.rootIndex + 12 * state.octave + rootSemi;
+    return { nameBase, roman, intervals, rootMidi };
+  }
+
+  // ---------- Röstläggning (omvändningar + auto voice-leading) ----------
+  const avg = a => a.reduce((s, x) => s + x, 0) / a.length;
+  function rotate(intervals, k){
+    k = Math.min(k, intervals.length - 1);
+    return intervals.slice(k).concat(intervals.slice(0, k).map(x => x + 12));
+  }
+  function voiceLeadScore(cand, ref){
+    let s = 0;
+    for (const n of cand){ let m = Infinity; for (const p of ref) m = Math.min(m, Math.abs(n - p)); s += m; }
+    return s + 0.25 * Math.abs(avg(cand) - avg(ref));
+  }
+  const BASS_K = { root: 0, third: 1, fifth: 2 };
+  function finalize(c, midis){
+    let name = c.nameBase;
+    const bassPc = ((midis[0] % 12) + 12) % 12;
+    const rootPc = ((c.rootMidi % 12) + 12) % 12;
+    if (bassPc !== rootPc) name += '/' + NOTE_NAMES[bassPc];
+    return { name, roman: c.roman, midis };
+  }
+  function voiceChord(degree, reference){
+    const c = buildChord(degree);
+    if (state.bass !== 'auto') return finalize(c, rotate(c.intervals, BASS_K[state.bass]).map(x => c.rootMidi + x));
+    if (!reference) return finalize(c, c.intervals.map(x => c.rootMidi + x));
+    let best = null, bestScore = Infinity;
+    for (let k = 0; k < c.intervals.length; k++){
+      const r = rotate(c.intervals, k);
+      for (const o of [-12, 0, 12]){
+        const midis = r.map(x => c.rootMidi + x + o);
+        const sc = voiceLeadScore(midis, reference);
+        if (sc < bestScore){ bestScore = sc; best = midis; }
+      }
+    }
+    return finalize(c, best);
+  }
+  function midisFor(degree, reference){
+    return INSTRUMENTS[state.instrument].mono ? [ buildChord(degree).rootMidi ] : voiceChord(degree, reference).midis;
+  }
+
+  // ---------- Audio: smplr-spelare ----------
+  let ctx, master, comp, filter;
+  const players = {};   // id -> smplr-spelare (laddad)
+  const loading = {};   // id -> Promise
+  function ensureAudio(){
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = state.cutoff; filter.Q.value = 0.7;
+    master = ctx.createGain(); master.gain.value = state.volume;
+    comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -12; comp.ratio.value = 3.5; comp.attack.value = 0.003; comp.release.value = 0.25;
+    filter.connect(master); master.connect(comp); comp.connect(ctx.destination);
+  }
+  function loadInstrument(id){
+    ensureAudio();
+    if (players[id]) return Promise.resolve(players[id]);
+    if (loading[id]) return loading[id];
+    const inst = INSTRUMENTS[id];
+    const player = inst.drums
+      ? new DrumMachine(ctx, { instrument: 'TR-808', destination: filter, volume: 115 })
+      : new Soundfont(ctx, { instrument: inst.sf, destination: filter });
+    loading[id] = player.load.then(() => { players[id] = player; return player; });
+    return loading[id];
+  }
+  function withPlayer(id, cb){
+    const p = players[id];
+    if (p) cb(p); else loadInstrument(id).then(cb);
+  }
+
+  // ---------- Spel-logik ----------
+  const held = {};          // degree -> { stops:[{note,fn}], midis, id, released }
+  let lastVoicing = null;
+  let tonalityPad, bassPad;
+
+  function playNotes(player, entry, midis, tr){
+    for (const m of midis){
+      const stop = player.start({ note: m + tr, velocity: 96 });
+      entry.stops.push({ note: m + tr, fn: typeof stop === 'function' ? stop : null });
+    }
+  }
+  function stopNotes(player, entry){
+    entry.stops.forEach(s => { try { if (s.fn) s.fn(); else if (player) player.stop({ note: s.note }); } catch(e){} });
+    entry.stops = [];
+  }
+
+  function startChord(degree){
+    ensureAudio();
+    const id = state.instrument, inst = INSTRUMENTS[id];
+    if (inst.drums){
+      setActive(degree, true);
+      withPlayer('drums', drums => { try { drums.start({ note: DRUM_PADS[degree].sample, velocity: 100 }); } catch(e){} });
+      return;
+    }
+    if (held[degree]) return;
+    const midis = midisFor(degree, lastVoicing);
+    const entry = { stops: [], midis: midis.slice(), id, released: false };
+    held[degree] = entry;
+    lastVoicing = midis.slice();
+    setActive(degree, true);
+    const tr = inst.transpose || 0;
+    withPlayer(id, player => { if (!entry.released) playNotes(player, entry, midis, tr); });
+  }
+  function stopChord(degree){
+    const h = held[degree];
+    if (h){ h.released = true; stopNotes(players[h.id], h); delete held[degree]; }
+    setActive(degree, false);
+  }
+
+  // Tonalitet/bas ändras live = spela om de hållna ackorden (samplade toner kan inte böjas)
+  function revoiceHeld(){
+    if (!ctx) return;
+    const id = state.instrument, inst = INSTRUMENTS[id];
+    if (inst.drums) return;
+    const player = players[id];
+    if (!player) return;
+    const tr = inst.transpose || 0;
+    for (const key of Object.keys(held)){
+      const degree = +key, h = held[degree];
+      stopNotes(player, h);
+      const midis = midisFor(degree, h.midis);
+      h.midis = midis.slice(); lastVoicing = midis.slice();
+      playNotes(player, h, midis, tr);
+    }
+  }
+
+  function setMod(id){ if (state.mod === id) return; state.mod = id; tonalityPad.update(); refreshChordLabels(); revoiceHeld(); }
+  function setBass(id){ if (state.bass === id) return; state.bass = id; bassPad.update(); refreshChordLabels(); revoiceHeld(); }
+
+  // ---------- UI: pads ----------
+  const chordsEl = document.getElementById('chords');
+  const chordBtns = [];
+  for (let d = 0; d < 7; d++){
+    const b = document.createElement('div');
+    b.className = 'chord';
+    b.innerHTML = `<div class="roman"></div><div class="name"></div><div class="key"></div>`;
+    b.addEventListener('pointerdown', e => { try { b.setPointerCapture(e.pointerId); } catch(_){} startChord(d); });
+    b.addEventListener('pointerup',   () => stopChord(d));
+    b.addEventListener('pointercancel', () => stopChord(d));
+    b.addEventListener('contextmenu', e => e.preventDefault());
+    chordBtns.push(b);
+  }
+  function renderLayout(){
+    chordsEl.innerHTML = '';
+    const rows = state.instrument === 'drums' ? DRUM_LAYOUT : LAYOUTS[state.layout];
+    for (const row of rows){
+      const r = document.createElement('div'); r.className = 'chord-row';
+      for (const d of row) r.appendChild(chordBtns[d]);
+      chordsEl.appendChild(r);
+    }
+  }
+  function setActive(degree, on){ chordBtns[degree].classList.toggle('active', on); }
+
+  function refreshChordLabels(){
+    if (state.instrument === 'drums'){
+      for (let d = 0; d < 7; d++){
+        const b = chordBtns[d];
+        b.querySelector('.roman').textContent = 'PAD ' + (d + 1);
+        b.querySelector('.name').textContent  = DRUM_PADS[d].name;
+        b.querySelector('.key').textContent   = '';
+      }
+      document.getElementById('keyReadout').textContent = 'TRUMMOR';
+      return;
+    }
+    for (let d = 0; d < 7; d++){
+      const c = voiceChord(d, null);
+      const b = chordBtns[d];
+      b.querySelector('.roman').textContent = c.roman;
+      b.querySelector('.name').textContent  = c.name;
+      b.querySelector('.key').textContent   = NOTE_NAMES[((c.midis[0] % 12) + 12) % 12];
+    }
+    const modeName = state.mode === 'major' ? 'dur' : 'moll';
+    document.getElementById('keyReadout').textContent = `${NOTE_NAMES[state.rootIndex]}-${modeName}`.toUpperCase();
+  }
+
+  // Återanvändbar touch-pad (mitten + N sektorer, medurs från toppen)
+  function createPad(opts){
+    const pad = document.getElementById(opts.padId);
+    const center = document.getElementById(opts.centerId);
+    const labels = document.getElementById(opts.labelsId);
+    const puck = document.getElementById(opts.puckId);
+    const ring = opts.ring, N = ring.length, seg = 360 / N;
+
+    ring.forEach((item, i) => {
+      const a = i * seg * Math.PI / 180;
+      const el = document.createElement('div');
+      el.className = 'pad-label'; el.dataset.val = item.id; el.textContent = item.label;
+      el.style.left = (50 + Math.sin(a) * 36) + '%';
+      el.style.top  = (50 - Math.cos(a) * 36) + '%';
+      labels.appendChild(el);
+    });
+
+    function update(){
+      const active = opts.getActive();
+      const idx = ring.findIndex(r => r.id === active);
+      const stops = [];
+      for (let i = 0; i < N; i++){
+        const col = i === idx ? 'rgba(241,90,34,.95)' : i % 2 ? '#e8e4db' : '#dbd6cc';
+        stops.push(`${col} ${i*seg}deg ${(i+1)*seg}deg`);
+      }
+      pad.style.backgroundImage = `conic-gradient(from ${-seg/2}deg, ${stops.join(',')})`;
+      center.classList.toggle('on', active === opts.centerVal);
+      [...labels.children].forEach(el => el.classList.toggle('on', el.dataset.val === active));
+    }
+
+    function pick(clientX, clientY){
+      const r = pad.getBoundingClientRect();
+      const dx = clientX - (r.left + r.width / 2);
+      const dy = clientY - (r.top + r.height / 2);
+      const dist = Math.hypot(dx, dy);
+      const maxR = r.width * 0.46;
+      let px = dx, py = dy;
+      if (dist > maxR){ px = dx / dist * maxR; py = dy / dist * maxR; }
+      puck.style.left = (px / r.width * 100 + 50) + '%';
+      puck.style.top  = (py / r.height * 100 + 50) + '%';
+      if (dist < r.width * 0.19) return opts.centerVal;
+      let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
+      if (deg < 0) deg += 360;
+      return ring[Math.floor(((deg + seg / 2) % 360) / seg) % N].id;
+    }
+
+    let dragging = false;
+    pad.addEventListener('pointerdown', e => {
+      try { pad.setPointerCapture(e.pointerId); } catch(_){}
+      dragging = true; puck.classList.add('on');
+      opts.onSelect(pick(e.clientX, e.clientY));
+    });
+    pad.addEventListener('pointermove', e => { if (dragging) opts.onSelect(pick(e.clientX, e.clientY)); });
+    const end = () => { dragging = false; puck.classList.remove('on'); };
+    pad.addEventListener('pointerup', end);
+    pad.addEventListener('pointercancel', end);
+    pad.addEventListener('contextmenu', e => e.preventDefault());
+
+    update();
+    return { update };
+  }
+
+  const RING_TON = [
+    { id:'sus2', label:'sus2' }, { id:'add9', label:'add9' }, { id:'6', label:'6' },
+    { id:'7', label:'7' }, { id:'maj7', label:'maj7' }, { id:'sus4', label:'sus4' },
+  ];
+  const RING_BASS = [
+    { id:'auto', label:'Auto' }, { id:'third', label:'Ters' }, { id:'fifth', label:'Kvint' },
+  ];
+  tonalityPad = createPad({ padId:'tonPad', centerId:'tonCenter', labelsId:'tonLabels', puckId:'tonPuck',
+    centerVal:'triad', ring:RING_TON, getActive:() => state.mod, onSelect:setMod });
+  bassPad = createPad({ padId:'bassPad', centerId:'bassCenter', labelsId:'bassLabels', puckId:'bassPuck',
+    centerVal:'root', ring:RING_BASS, getActive:() => state.bass, onSelect:setBass });
+
+  // ---------- UI: kontroller ----------
+  const cutEl = document.getElementById('cut'), cutVal = document.getElementById('cutVal');
+  const octEl = document.getElementById('oct'), octVal = document.getElementById('octVal');
+  const instReadout = document.getElementById('instReadout');
+
+  function applyInstrument(id){
+    for (let d = 0; d < 7; d++) stopChord(d);
+    state.instrument = id;
+    const inst = INSTRUMENTS[id];
+    lastVoicing = null;
+    document.body.classList.toggle('drum-mode', !!inst.drums);
+    [...document.getElementById('inst').children].forEach(b => b.classList.toggle('on', b.dataset.inst === id));
+    renderLayout();
+    refreshChordLabels();
+    instReadout.textContent = inst.short;
+    if (ctx && !players[id]){
+      instReadout.textContent = 'LADDAR…';
+      loadInstrument(id).then(() => { if (state.instrument === id) instReadout.textContent = inst.short; });
+    }
+  }
+  document.getElementById('inst').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    applyInstrument(b.dataset.inst);
+  });
+
+  const rootSel = document.getElementById('root');
+  NOTE_NAMES.forEach((n, i) => { const o = document.createElement('option'); o.value = i; o.textContent = n; rootSel.appendChild(o); });
+  rootSel.value = state.rootIndex;
+  rootSel.addEventListener('change', () => { state.rootIndex = +rootSel.value; refreshChordLabels(); });
+
+  document.getElementById('layout').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.layout = b.dataset.layout;
+    [...e.currentTarget.children].forEach(c => c.classList.toggle('on', c === b));
+    renderLayout();
+  });
+  document.getElementById('mode').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.mode = b.dataset.mode;
+    [...e.currentTarget.children].forEach(c => c.classList.toggle('on', c === b));
+    refreshChordLabels();
+  });
+
+  octEl.addEventListener('input', () => { state.octave = +octEl.value; octVal.textContent = octEl.value; refreshChordLabels(); });
+  cutEl.addEventListener('input', () => {
+    state.cutoff = +cutEl.value; cutVal.textContent = cutEl.value;
+    if (filter) filter.frequency.setTargetAtTime(state.cutoff, ctx.currentTime, 0.01);
+  });
+  const volEl = document.getElementById('vol');
+  volEl.addEventListener('input', () => {
+    state.volume = +volEl.value / 100;
+    if (master) master.gain.setTargetAtTime(state.volume, ctx.currentTime, 0.01);
+  });
+
+  // ---------- Scratch (vinyl-skiva) ----------
+  // Ett kort ljud renderas till en buffert; ett spelhuvud läses av med en hastighet
+  // som styrs av din dragrörelse — bakåt = baklänges, snabbare = högre pitch.
+  let scratchSP, scratchOut, scratchData = null, scratchPos = 0, scratchRate = 0, scratchTarget = 0;
+  const scratchCache = {};
+  const SCRATCH_SCALE = 55;
+
+  function renderScratchSample(kind){
+    const sr = ctx.sampleRate, dur = 1.2;
+    const off = new OfflineAudioContext(1, Math.ceil(sr * dur), sr);
+    const out = off.createGain(); out.connect(off.destination);
+    const env = off.createGain();
+    env.gain.setValueAtTime(0.0001, 0);
+    env.gain.linearRampToValueAtTime(1, 0.02);
+    env.gain.setValueAtTime(1, dur - 0.12);
+    env.gain.linearRampToValueAtTime(0.0001, dur);
+    env.connect(out);
+    if (kind === 'ahh'){                         // vokal "ahh" via formant-filter
+      const o = off.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(155, 0); o.frequency.linearRampToValueAtTime(135, dur);
+      const sum = off.createGain(); sum.gain.value = 0.9;
+      [[700,1],[1220,0.55],[2600,0.3]].forEach(([f,g]) => {
+        const bp = off.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 8;
+        const gg = off.createGain(); gg.gain.value = g;
+        o.connect(bp); bp.connect(gg); gg.connect(sum);
+      });
+      sum.connect(env); o.start(); o.stop(dur);
+    } else if (kind === 'hit'){                  // orkester-stöt (dur-ackord)
+      [0,4,7,12].forEach(semi => {
+        const o = off.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 220 * Math.pow(2, semi/12);
+        const g = off.createGain(); g.gain.value = 0.18;
+        o.connect(g); g.connect(env); o.start(); o.stop(dur);
+      });
+    } else {                                     // zap — fallande svep
+      const o = off.createOscillator(); o.type = 'square';
+      o.frequency.setValueAtTime(1400, 0); o.frequency.exponentialRampToValueAtTime(120, dur * 0.8);
+      const g = off.createGain(); g.gain.value = 0.4; o.connect(g); g.connect(env); o.start(); o.stop(dur);
+    }
+    return off.startRendering().then(b => b.getChannelData(0));
+  }
+  function getScratchSample(kind){
+    if (scratchCache[kind]) return Promise.resolve(scratchCache[kind]);
+    return renderScratchSample(kind).then(d => (scratchCache[kind] = d));
+  }
+  function ensureScratch(){
+    if (scratchSP) return;
+    ensureAudio();
+    scratchOut = ctx.createGain();
+    scratchOut.gain.value = +document.getElementById('scratchVol').value / 100;
+    scratchOut.connect(master);
+    scratchSP = ctx.createScriptProcessor(512, 0, 1);
+    scratchSP.onaudioprocess = e => {
+      const o = e.outputBuffer.getChannelData(0), data = scratchData;
+      if (!data){ o.fill(0); return; }
+      const len = data.length;
+      for (let i = 0; i < o.length; i++){
+        scratchRate += (scratchTarget - scratchRate) * 0.012;   // mjuk hastighetsglidning
+        let s = 0;
+        if (Math.abs(scratchRate) > 0.0015){                    // stilla skiva = tyst (som en riktig LP)
+          const i0 = Math.floor(scratchPos), frac = scratchPos - i0;
+          const a = data[((i0 % len) + len) % len], b = data[(((i0 + 1) % len) + len) % len];
+          s = a + (b - a) * frac;                               // linjär interpolation
+          scratchPos += scratchRate;
+          if (scratchPos >= len) scratchPos -= len; else if (scratchPos < 0) scratchPos += len;
+        }
+        o[i] = s * 0.9;
+      }
+    };
+    scratchSP.connect(scratchOut);
+  }
+  function setScratchKind(kind){
+    state.scratchKind = kind;
+    document.getElementById('vinylLabel').textContent = kind.toUpperCase();
+    [...document.getElementById('scratchSel').children].forEach(b => b.classList.toggle('on', b.dataset.s === kind));
+    if (ctx) getScratchSample(kind).then(d => { scratchData = d; scratchPos = 0; });
+  }
+
+  const vinyl = document.getElementById('vinyl');
+  const scr = { active:false, lastAngle:0, lastT:0, lastMove:0, accum:0 };
+  const vinylAngle = e => { const r = vinyl.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height/2), e.clientX - (r.left + r.width/2)); };
+  function scratchRAF(){
+    if (!scr.active) return;
+    if (performance.now() - scr.lastMove > 40) scratchTarget = 0;   // finger stilla -> stanna
+    requestAnimationFrame(scratchRAF);
+  }
+  vinyl.addEventListener('pointerdown', e => {
+    try { vinyl.setPointerCapture(e.pointerId); } catch(_){}
+    ensureScratch();
+    if (!scratchData) setScratchKind(state.scratchKind);
+    scr.active = true; scr.lastAngle = vinylAngle(e); scr.lastT = performance.now(); scr.lastMove = scr.lastT;
+    scratchRAF();
+  });
+  vinyl.addEventListener('pointermove', e => {
+    if (!scr.active) return;
+    const a = vinylAngle(e), now = performance.now();
+    let d = a - scr.lastAngle;
+    while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    const dt = Math.max(now - scr.lastT, 1);
+    scratchTarget = Math.max(-8, Math.min(8, (d / dt) * SCRATCH_SCALE));
+    scr.accum += d * 180 / Math.PI;
+    vinyl.style.transform = `rotate(${scr.accum}deg)`;
+    scr.lastAngle = a; scr.lastT = now; scr.lastMove = now;
+  });
+  const endScratch = () => { scr.active = false; scratchTarget = 0; };
+  vinyl.addEventListener('pointerup', endScratch);
+  vinyl.addEventListener('pointercancel', endScratch);
+  vinyl.addEventListener('contextmenu', e => e.preventDefault());
+
+  document.getElementById('scratchSel').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    setScratchKind(b.dataset.s);
+  });
+  document.getElementById('scratchVol').addEventListener('input', e => {
+    if (scratchOut) scratchOut.gain.setTargetAtTime(+e.target.value / 100, ctx.currentTime, 0.01);
+  });
+
+  // ---------- Tangentbord ----------
+  const NUM_KEYS = ['1','2','3','4','5','6','7'];
+  const MOD_KEYS = ['q','w','e','r','t','y','u'];
+  const BASS_KEYS = { a:'root', s:'third', d:'fifth', f:'auto' };
+  window.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    const k = e.key.toLowerCase();
+    const ni = NUM_KEYS.indexOf(e.key);
+    if (ni >= 0){ startChord(ni); return; }
+    const mi = MOD_KEYS.indexOf(k);
+    if (mi >= 0 && mi < MODS.length){ setMod(MODS[mi].id); return; }
+    if (BASS_KEYS[k]){ setBass(BASS_KEYS[k]); return; }
+    if (k === 'z' && state.octave > 3){ state.octave--; octEl.value = state.octave; octVal.textContent = state.octave; refreshChordLabels(); }
+    if (k === 'x' && state.octave < 6){ state.octave++; octEl.value = state.octave; octVal.textContent = state.octave; refreshChordLabels(); }
+  });
+  window.addEventListener('keyup', e => {
+    const ni = NUM_KEYS.indexOf(e.key);
+    if (ni >= 0) stopChord(ni);
+  });
+  window.addEventListener('blur', () => { for (let d = 0; d < 7; d++) stopChord(d); });
+
+  // Värm upp ljudet (skapa context + börja ladda instrumentet) vid första interaktionen
+  document.addEventListener('pointerdown', () => {
+    ensureAudio();
+    loadInstrument(state.instrument).then(() => { if (!players[state.instrument]) return; instReadout.textContent = INSTRUMENTS[state.instrument].short; });
+    ensureScratch(); setScratchKind(state.scratchKind);
+  }, { once: true });
+
+  // ---------- Init ----------
+  renderLayout();
+  applyInstrument(state.instrument);
+</script>
+</body>
+</html>
