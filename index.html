@@ -54,6 +54,12 @@
   .disp-led.alt{color:var(--cyan);text-shadow:0 0 9px rgba(31,169,201,.6);font-size:15px}
   .disp-icons{margin-left:auto;display:flex;gap:5px}
   .disp-icons i{width:11px;height:11px;border-radius:2px;display:block;opacity:.92}
+  .settings-btn{
+    display:none;margin-left:auto;flex:0 0 auto;width:30px;height:30px;border-radius:8px;
+    border:1px solid #000;background:#2a2924;color:var(--cream);align-items:center;justify-content:center;
+    font-size:15px;line-height:1;cursor:pointer;
+  }
+  .settings-btn.on{background:var(--orange);color:#fff;border-color:var(--orange-d)}
 
   /* ---- Paneler ---- */
   .wrap{display:flex;flex-direction:column;gap:13px}
@@ -178,10 +184,60 @@
 
   @media (max-width:640px){
     .controls{grid-template-columns:1fr}
-    body{padding:12px 9px 36px}
-    .chord{min-height:84px;padding:11px 4px 10px}
-    .logo{font-size:22px}
-    .grille{width:96px;height:38px}
+
+    /* Kompakt "spel-vy": ackord + tonalitet + scratch ska rymmas utan skroll.
+       Sekundärt (layout, bas-pad, tonart/ljud, scratch-volym) göms bakom ⚙. */
+    body{padding:8px 7px 22px}
+    .device{padding:9px;border-radius:18px}
+    .device-top{padding:2px 2px 7px}
+    .logo{font-size:19px}
+    .sub{display:none}
+    .grille{display:none}
+    .display{padding:7px 11px;margin-bottom:8px;gap:7px}
+    .disp-label{font-size:8px}
+    .disp-led{font-size:15px;letter-spacing:1px}
+    .disp-led.alt{font-size:12px}
+    .disp-icons{display:none}
+    .settings-btn{display:inline-flex}
+
+    .wrap{gap:7px}
+    .panel{padding:9px;border-radius:12px}
+    .panel h2{display:none}
+    .panel-head{display:none;margin-bottom:0}
+
+    .seg-inst{gap:4px}
+    .seg-inst button{padding:8px 6px;font-size:11px;min-width:0;letter-spacing:.3px}
+
+    .chords{gap:6px}
+    .chord-row{gap:6px}
+    .chord{min-height:50px;padding:6px 4px 5px}
+    .chord .roman{font-size:9px;letter-spacing:.5px}
+    .chord .name{font-size:clamp(14px,4.6vw,18px)}
+    .chord .key{font-size:9px}
+
+    .pads{gap:10px}
+    .pad-title{display:none}
+    .pad{width:min(38vw,116px);height:min(38vw,116px);border-width:5px}
+    .pad-center{width:40%;height:40%;font-size:10px}
+    .pad-label{font-size:11px}
+    .pad-hint{display:none}
+    .pad-unit.bass{display:none}
+
+    .scratch-row{gap:12px;justify-content:flex-start;align-items:center}
+    .vinyl{width:min(32vw,100px);height:min(32vw,100px);border-width:3px}
+    .vinyl-label{font-size:9px;letter-spacing:.5px}
+    .scratch-side{gap:7px;flex:1 1 130px;min-width:130px}
+    .scratch-side .ctrl.scratch-vol{display:none}
+
+    .panel.tonart{display:none}
+
+    /* ⚙ öppet: visa det sekundära igen */
+    body.settings-open .panel-head{display:flex}
+    body.settings-open .pad-unit.bass{display:flex}
+    body.settings-open .pad-hint{display:block}
+    body.settings-open .panel.tonart{display:block}
+    body.settings-open .panel h2{display:block}
+    body.settings-open .scratch-side .ctrl.scratch-vol{display:flex}
   }
 </style>
 </head>
@@ -204,6 +260,7 @@
         <i style="background:var(--orange)"></i><i style="background:var(--cyan)"></i>
         <i style="background:var(--red)"></i><i style="background:var(--blue)"></i>
       </span>
+      <button class="settings-btn" id="settingsBtn" aria-label="Visa fler inställningar" title="Inställningar">⚙</button>
     </div>
 
     <div class="wrap">
@@ -245,7 +302,7 @@
               <div class="pad-puck" id="tonPuck"></div>
             </div>
           </div>
-          <div class="pad-unit">
+          <div class="pad-unit bass">
             <div class="pad-title">Bas / röstföring</div>
             <div class="pad" id="bassPad">
               <div class="pad-center" id="bassCenter">Rot</div>
@@ -278,7 +335,7 @@
                 <button data-s="zap">Zap</button>
               </div>
             </div>
-            <div class="ctrl">
+            <div class="ctrl scratch-vol">
               <label>Scratch-volym</label>
               <input type="range" id="scratchVol" min="0" max="100" step="1" value="80" />
             </div>
@@ -288,7 +345,7 @@
       </div>
 
       <!-- TONART & LJUD -->
-      <div class="panel">
+      <div class="panel tonart">
         <h2>Tonart &amp; ljud</h2>
         <div class="controls">
           <div class="ctrl keyctl">
@@ -683,6 +740,13 @@ import { Soundfont, DrumMachine } from "https://esm.sh/smplr";
   document.getElementById('inst').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     applyInstrument(b.dataset.inst);
+  });
+
+  // ⚙ — fäll ut sekundära inställningar på mobil
+  const settingsBtn = document.getElementById('settingsBtn');
+  settingsBtn.addEventListener('click', () => {
+    const open = document.body.classList.toggle('settings-open');
+    settingsBtn.classList.toggle('on', open);
   });
 
   const rootSel = document.getElementById('root');
