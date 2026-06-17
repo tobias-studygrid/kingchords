@@ -266,13 +266,14 @@
         <div class="scratch-row">
           <div class="vinyl" id="vinyl">
             <div class="vinyl-mark"></div>
-            <div class="vinyl-label" id="vinylLabel">AHH</div>
+            <div class="vinyl-label" id="vinylLabel">LIVE</div>
           </div>
           <div class="scratch-side">
             <div class="ctrl">
               <label>Ljud att scratcha</label>
               <div class="seg" id="scratchSel">
-                <button data-s="ahh" class="on">Ahh</button>
+                <button data-s="live" class="on">Live</button>
+                <button data-s="ahh">Ahh</button>
                 <button data-s="hit">Hit</button>
                 <button data-s="zap">Zap</button>
               </div>
@@ -281,7 +282,7 @@
               <label>Scratch-volym</label>
               <input type="range" id="scratchVol" min="0" max="100" step="1" value="80" />
             </div>
-            <div class="pad-hint" style="text-align:left;margin:2px 0 0">Dra fingret runt skivan fram och tillbaka. Snabbt = högre pitch, baklänges = omvänt ljud.</div>
+            <div class="pad-hint" style="text-align:left;margin:2px 0 0"><strong style="color:var(--ink)">Live</strong> scratchar tonen du just spelat — spela ett ackord, greppa skivan och dra. Snabbt = högre pitch, baklänges = omvänt.</div>
           </div>
         </div>
       </div>
@@ -370,7 +371,7 @@ import { Soundfont, DrumMachine } from "https://esm.sh/smplr";
     rootIndex: 0, mode: 'major', mod: 'triad',
     octave: 5, cutoff: 12000, volume: 0.80,
     layout: 'fifths', bass: 'root', instrument: 'organ',
-    scratchKind: 'ahh',
+    scratchKind: 'live',
   };
 
   const LAYOUTS = {
@@ -717,6 +718,7 @@ import { Soundfont, DrumMachine } from "https://esm.sh/smplr";
   // Ett kort ljud renderas till en buffert; ett spelhuvud läses av med en hastighet
   // som styrs av din dragrörelse — bakåt = baklänges, snabbare = högre pitch.
   let scratchSP, scratchOut, scratchData = null, scratchPos = 0, scratchRate = 0, scratchTarget = 0;
+  let recorderSP, recBuf = null, recWrite = 0;   // löpande inspelning av instrumentljudet (för live-scratch)
   const scratchCache = {};
   const SCRATCH_SCALE = 55;
 
@@ -782,12 +784,30 @@ import { Soundfont, DrumMachine } from "https://esm.sh/smplr";
       }
     };
     scratchSP.connect(scratchOut);
+
+    // Inspelnings-tapp: fångar instrumentljudet (efter filter) i en cirkulär 3-sek buffert
+    recBuf = new Float32Array(Math.floor(ctx.sampleRate * 3)); recWrite = 0;
+    recorderSP = ctx.createScriptProcessor(1024, 1, 1);
+    recorderSP.onaudioprocess = e => {
+      const inp = e.inputBuffer.getChannelData(0), L = recBuf.length;
+      for (let i = 0; i < inp.length; i++){ recBuf[recWrite] = inp[i]; recWrite = (recWrite + 1) % L; }
+    };
+    filter.connect(recorderSP);
+    const sink = ctx.createGain(); sink.gain.value = 0; recorderSP.connect(sink); sink.connect(master);
+  }
+  // Frys de senaste sekunderna av det inspelade ljudet till scratch-buffert (live-läge)
+  function snapshotLive(){
+    if (!recBuf) return;
+    const N = recBuf.length, snap = new Float32Array(N);
+    for (let i = 0; i < N; i++) snap[i] = recBuf[(recWrite + i) % N];   // ordna äldst -> nyast
+    scratchData = snap;
+    scratchPos = Math.floor(N * 0.92);                                  // börja vid det senast spelade
   }
   function setScratchKind(kind){
     state.scratchKind = kind;
     document.getElementById('vinylLabel').textContent = kind.toUpperCase();
     [...document.getElementById('scratchSel').children].forEach(b => b.classList.toggle('on', b.dataset.s === kind));
-    if (ctx) getScratchSample(kind).then(d => { scratchData = d; scratchPos = 0; });
+    if (kind !== 'live' && ctx) getScratchSample(kind).then(d => { scratchData = d; scratchPos = 0; });
   }
 
   const vinyl = document.getElementById('vinyl');
@@ -801,7 +821,8 @@ import { Soundfont, DrumMachine } from "https://esm.sh/smplr";
   vinyl.addEventListener('pointerdown', e => {
     try { vinyl.setPointerCapture(e.pointerId); } catch(_){}
     ensureScratch();
-    if (!scratchData) setScratchKind(state.scratchKind);
+    if (state.scratchKind === 'live') snapshotLive();          // fånga tonen du just spelade
+    else if (!scratchData) setScratchKind(state.scratchKind);
     scr.active = true; scr.lastAngle = vinylAngle(e); scr.lastT = performance.now(); scr.lastMove = scr.lastT;
     scratchRAF();
   });
